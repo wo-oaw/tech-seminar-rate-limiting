@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Token Bucket</title>
+    <style>
+        body { font-family: system-ui, Arial, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+        .bar { height: 18px; background: #eee; border-radius: 9px; overflow: hidden; }
+        .fill { height: 100%; width: 0; background: #16a34a; transition: width .2s; }
+        button { padding: 10px 14px; font-size: 16px; }
+        .row { display:flex; gap:8px; align-items:center; }
+        a { text-decoration:none; color:#4f46e5; }
+    </style>
+</head>
+<body>
+<p><a href="/">← 돌아가기</a></p>
+<h1>Token Bucket</h1>
+<p>버킷 용량 = 10 / 1초당 토큰 1개가 리필됩니다</p>
+
+<div class="row">
+    <button id="send">요청 보내기</button>
+    <span id="msg"></span>
+</div>
+
+<h3>남은 토큰: <span id="tokens">-</span> / 10</h3>
+<div class="bar"><div class="fill" id="fill"></div></div>
+
+<script>
+    const tokensEl = document.getElementById('tokens');
+    const msgEl = document.getElementById('msg');
+    const fillEl = document.getElementById('fill');
+
+    async function status() {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        const available = data.availableTokens ?? 0;
+        tokensEl.textContent = available;
+        fillEl.style.width = Math.min(100,(available/10)*100)+'%';
+    }
+
+    async function send() {
+        msgEl.textContent='';
+        const res = await fetch('/api/request',{method:'POST'});
+        const data = await res.json();
+
+        if (data.allowed) {
+            msgEl.textContent='✅ 요청 허용';
+        } else {
+            alert(`⛔ 제한됨 — 약 ${data.retryAfterSec?.toFixed?.(1)||0}s 후 재시도 해주세요!`);
+        }
+
+        status();
+    }
+
+    document.getElementById('send').addEventListener('click', send);
+    setInterval(status, 500);
+    status();
+</script>
+</body>
+</html>

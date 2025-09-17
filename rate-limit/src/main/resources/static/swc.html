@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sliding Window Counter</title>
+    <style>
+        body { font-family: system-ui, Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
+        .bar { height: 18px; background: #eee; border-radius: 9px; overflow: hidden; }
+        .fill { height: 100%; width: 0; background: #16a34a; transition: width .2s; }
+        .row { display:flex; gap:8px; align-items:center; }
+        button { padding: 10px 14px; font-size: 16px; }
+        .muted { color:#666; }
+        a { text-decoration:none; color:#4f46e5; }
+    </style>
+</head>
+<body>
+<p><a href="/">← 돌아가기</a></p>
+<h1>Sliding Window Counter</h1>
+<p>10초 윈도우에 10회 제한. 현재 윈도우와 직전 윈도우의 겹치는 비율로 추정 카운트를 계산합니다.</p>
+
+<div class="row">
+    <button id="send">요청 보내기</button>
+    <span id="msg"></span>
+</div>
+
+<h3>남은 허용치(추정): <span id="remaining">-</span> / 10</h3>
+<div class="bar"><div class="fill" id="fill"></div></div>
+<p class="muted">effectiveCount: <span id="eff">-</span> (경과 <span id="elapsed">-</span> ms)</p>
+
+<script>
+    const remainingEl = document.getElementById('remaining');
+    const fillEl = document.getElementById('fill');
+    const effEl = document.getElementById('eff');
+    const elpEl = document.getElementById('elapsed');
+    const msgEl = document.getElementById('msg');
+
+    async function status() {
+        const res = await fetch('/swc/status');
+        const d = await res.json();
+        remainingEl.textContent = d.remaining;
+        fillEl.style.width = Math.min(100, (d.effectiveCount/10)*100) + '%';
+        effEl.textContent = d.effectiveCount.toFixed(2);
+        elpEl.textContent = d.elapsedInWindowMillis;
+    }
+
+    async function send() {
+        msgEl.textContent='';
+        const res = await fetch('/swc/request',{method:'POST'});
+        const d = await res.json();
+
+        if (d.allowed) {
+            msgEl.textContent='✅ 요청 허용';
+        } else {
+            alert(`⛔ 제한됨 — 약 ${d.retryAfterSec?.toFixed?.(1)||0}s 후 재시도 해주세요!`);
+        }
+
+        status();
+    }
+
+    document.getElementById('send').addEventListener('click', send);
+    setInterval(status, 500);
+    status();
+</script>
+</body>
+</html>
